@@ -1,15 +1,10 @@
+install.packages("patchwork")
+library(patchwork)
+
 # wczytanie danych 
 results <- data.frame(read.csv("results.csv"))
 shootouts <- data.frame(read.csv("shootouts.csv"))
 goalscorers <- data.frame(read.csv("goalscorers.csv"))
-
-# zobaczenie jak wyglądają dane
-print(head(results, 10))
-print(head(shootouts, 10))
-
-print(colnames(results))
-print(unique(results$tournament))
-print(colnames(shootouts))
 
 results$goals_dif <- abs(results$home_score - results$away_score)
 results$goals_sum <- results$home_score + results$away_score
@@ -21,7 +16,7 @@ average_goals_per_year <- aggregate(goals_sum ~ year, data = results, FUN = mean
 average_dif_goals_per_year <- aggregate(goals_dif ~ year, data = results, FUN=mean)
 average_quot_goals_per_year <- aggregate(goals_quot ~ year, data = results, FUN=mean)
 
-# Tworzenie wykresu
+# Średnia suma bramek
 ggplot(average_goals_per_year, aes(x = year, y = goals_sum)) +
   geom_line(color = "blue", size = 1) +
   geom_point(color = "red") +
@@ -32,6 +27,9 @@ ggplot(average_goals_per_year, aes(x = year, y = goals_sum)) +
   ) +
   theme_minimal()
 
+ggsave("images/mecze_suma.png", plot = last_plot(), width = 8, height = 6, dpi = 300)
+
+# Średnia różnica bramek
 ggplot(average_dif_goals_per_year, aes(x = year, y = goals_dif)) + 
   geom_line(color = "green", size = 1) + 
   geom_point(color = "red") +
@@ -42,7 +40,9 @@ ggplot(average_dif_goals_per_year, aes(x = year, y = goals_dif)) +
   ) + 
   theme_minimal()
 
+ggsave("images/mecze_roznica.png", plot = last_plot(), width = 8, height = 6, dpi = 300)
 
+# Średni współczynnik ilorazu różnicy przez sumę
 ggplot(average_quot_goals_per_year, aes(x = year, y = goals_quot)) + 
   geom_line(color = "green", size = 1) + 
   geom_point(color = "red") +
@@ -54,3 +54,168 @@ ggplot(average_quot_goals_per_year, aes(x = year, y = goals_quot)) +
   theme_minimal()
 
 
+ggsave("images/mecze_wspolczynnik.png", plot = last_plot(), width = 8, height = 6, dpi = 300)
+
+
+
+
+
+
+
+
+
+
+
+library(dplyr)
+library(tidyr)  # Używamy funkcji pivot_longer
+
+
+# Łączenie danych w jeden zbiór
+combined_data <- data.frame(
+  year = average_goals_per_year$year[40:152],
+  goals_sum = average_goals_per_year$goals_sum[40:152],
+  goals_dif = average_dif_goals_per_year$goals_dif[40:152],
+  goals_quot = average_quot_goals_per_year$goals_quot[40:152]
+)
+
+# Przekształcamy dane do formatu długiego
+combined_data_long <- combined_data %>%
+  gather(key = "metric", value = "value", -year)
+
+# Tworzenie wykresu typu area chart
+ggplot(combined_data_long, aes(x = year, y = value, fill = metric)) +
+  geom_area(alpha = 0.6) +
+  scale_fill_manual(values = c("blue", "green", "red")) +
+  labs(
+    title = "Zmienność wskaźników w czasie",
+    x = "Rok",
+    y = "Wartość wskaźnika",
+    fill = "Wskaźnik"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+# Zapisanie wykresu
+ggsave("images/area_chart_wskaźniki.png", width = 10, height = 6, dpi = 300)
+
+
+
+
+
+
+
+
+
+
+
+library(patchwork)
+
+# Przygotowanie danych
+results <- data.frame(read.csv("results.csv"))
+results$goals_dif <- abs(results$home_score - results$away_score)
+results$goals_sum <- results$home_score + results$away_score
+results$year <- as.numeric(format(as.Date(results$date), "%Y"))
+results$goals_quot <- results$goals_dif / results$goals_sum
+
+# Obliczamy średnie wartości
+average_goals_per_year <- aggregate(goals_sum ~ year, data = results, FUN = mean)
+average_dif_goals_per_year <- aggregate(goals_dif ~ year, data = results, FUN = mean)
+average_quot_goals_per_year <- aggregate(goals_quot ~ year, data = results, FUN = mean)
+
+# Tworzenie poszczególnych wykresów
+plot1 <- ggplot(average_goals_per_year, aes(x = year, y = goals_sum)) +
+  geom_line(color = "blue", size = 1) +
+  labs(
+    title = "Średnia liczba goli na mecz w poszczególnych latach",
+    x = "Rok",
+    y = "Średnia liczba goli na mecz"
+  ) +
+  theme_minimal()
+
+plot2 <- ggplot(average_dif_goals_per_year, aes(x = year, y = goals_dif)) +
+  geom_line(color = "green", size = 1) +
+  labs(
+    title = "Średnia różnica bramkowa w meczu",
+    x = "Rok",
+    y = "Średnia różnica bramkowa"
+  ) +
+  theme_minimal()
+
+plot3 <- ggplot(average_quot_goals_per_year, aes(x = year, y = goals_quot)) +
+  geom_line(color = "purple", size = 1) +
+  labs(
+    title = "Średni iloraz różnicy do sumy bramek",
+    x = "Rok",
+    y = "Iloraz różnicy do sumy bramek"
+  ) +
+  theme_minimal()
+
+# Łączenie wykresów w jeden obraz
+combined_plot <- plot1 / plot2 / plot3
+
+# Wyświetlenie połączonego wykresu
+print(combined_plot)
+
+# Zapisanie do pliku
+ggsave("images/combined_indeces.png", plot = combined_plot, width = 10, height = 12, dpi = 300)
+
+
+library(patchwork)
+
+# Przygotowanie danych
+results <- data.frame(read.csv("results.csv"))
+results$goals_dif <- abs(results$home_score - results$away_score)
+results$goals_sum <- results$home_score + results$away_score
+results$year <- as.numeric(format(as.Date(results$date), "%Y"))
+results$goals_quot <- results$goals_dif / results$goals_sum
+
+# filter
+results <- results %>% filter(year >= max(year) - 25)
+
+# Obliczamy średnie wartości
+average_goals_per_year <- aggregate(goals_sum ~ year, data = results, FUN = mean)
+average_dif_goals_per_year <- aggregate(goals_dif ~ year, data = results, FUN = mean)
+average_quot_goals_per_year <- aggregate(goals_quot ~ year, data = results, FUN = mean)
+
+# Tworzenie poszczególnych wykresów
+plot1 <- ggplot(average_goals_per_year, aes(x = year, y = goals_sum)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point(color = "red") +
+  geom_smooth(method = "lm", color = "black", linetype = "dashed") +
+  labs(
+    title = "Średnia liczba goli na mecz w poszczególnych latach",
+    x = "Rok",
+    y = "Średnia liczba goli na mecz"
+  ) +
+  theme_minimal()
+
+plot2 <- ggplot(average_dif_goals_per_year, aes(x = year, y = goals_dif)) +
+  geom_line(color = "green", size = 1) +
+  geom_point(color = "red") +
+  geom_smooth(method = "lm", color = "black", linetype = "dashed") +
+  labs(
+    title = "Średnia różnica bramkowa w meczu",
+    x = "Rok",
+    y = "Średnia różnica bramkowa"
+  ) +
+  theme_minimal()
+
+plot3 <- ggplot(average_quot_goals_per_year, aes(x = year, y = goals_quot)) +
+  geom_line(color = "purple", size = 1) +
+  geom_point(color = "red") +
+  geom_smooth(method = "lm", color = "black", linetype = "dashed") +
+  labs(
+    title = "Średni iloraz różnicy do sumy bramek",
+    x = "Rok",
+    y = "Iloraz różnicy do sumy bramek"
+  ) +
+  theme_minimal()
+
+# Łączenie wykresów w jeden obraz
+combined_plot <- plot1 / plot2 / plot3
+
+# Wyświetlenie połączonego wykresu
+print(combined_plot)
+
+# Zapisanie do pliku
+ggsave("images/combined_recent_indeces.png", plot = combined_plot, width = 10, height = 12, dpi = 300)
